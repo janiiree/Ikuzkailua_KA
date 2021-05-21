@@ -9,6 +9,7 @@ $NOMOD51
 	EGOERA				EQU	20H
 	GERTAERA			EQU	21H
 	TENPERATURA			EQU	22H
+	DENBORA				EQU	23H
 		
 	MIN_UNIT			EQU 23H
 	MIN_HAMAR			EQU	24H
@@ -31,12 +32,12 @@ $NOMOD51
 	BEROG				EQU	P3.6
 		
 ;	Hamarrekoen Displaya
-	D1					EQU	P0
-	D1_ZENB				EQU	2BH
+	DH					EQU	P0
+	DH_ZENB				EQU	2BH
 	
 ;	Unitateen displaya
-	D2					EQU	P2
-	D2_ZENB				EQU	2CH
+	DU					EQU	P2
+	DU_ZENB				EQU	2CH
 	
 ;	Etenen FLAG-ak (T0, T1, ADC0, ADC1 eta IDLE)
 	TICK_15s			EQU	29H.2
@@ -66,9 +67,17 @@ ORG 03H		;	INT0 etena
 
 ORG	0BH		;	TIMER0 etena
 
-;	_______________________________________________________________________________________________________________________________
-	//TODO
-;	_______________________________________________________________________________________________________________________________
+	PUSH	ACC
+	PUSH	B
+	PUSH	PSW
+	MOV		TH0,	#0F8H
+	MOV		TL0,	#030H
+	ACALL	UNITATE_BIHURKETA
+	ACALL	T_FLAG_KONPROBATU
+	POP		PSW
+	POP		B
+	POP		ACC
+	RETI
 
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
@@ -80,9 +89,25 @@ ORG	1BH		;	TIMER1 etena
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 ORG	53H		;	ADC0 etena ---> ADCI=1 denean
-;	_______________________________________________________________________________________________________________________________
-	//TODO
-;	_______________________________________________________________________________________________________________________________
+
+	PUSH	ACC
+	PUSH	B
+	PUSH	PSW
+	SETB	TICK_IRAKURRITA
+	ANL		ADCON,	#0EFH
+	MOV		A,	#02H
+	CLR		C
+	SUBB	A,	EGOERA
+	JC		ADC_TENPERATURA
+	ACALL	PISUA_IRAKURRI
+	AJMP	ADC_AMAIERA
+	ADC_TENPERATURA:
+	ACALL	TENPERATURA_IRAKURRI
+	ADC_AMAIERA:
+	POP		PSW
+	POP		B
+	POP		ACC 
+	RETI
 
 ;*********************************************************************************************************************************
 ; 													PROGRAMA NAGUSIA
@@ -122,12 +147,12 @@ ORG 7BH
 		CLR	BEROG
 		
 ;		Hamarrekoen Displaya
-		MOV	D1,				#00H
-		MOV	D1_ZENB,		#00H
+		MOV	DH,				#00H
+		MOV	DH_ZENB,		#00H
 	
 ;		Unitateen displaya
-		MOV	D2,				#00H
-		MOV	D2_ZENB,		#00H
+		MOV	DU,				#00H
+		MOV	DU_ZENB,		#00H
 		
 ;		Etenen FLAG-ak (T0, T1, ADC0, ADC1 eta IDLE)
 		CLR	TICK_15s
@@ -139,11 +164,10 @@ ORG 7BH
 		CLR	TICK_IRAKURRITA
 		CLR	TICK_BOTOIA
 		
-;		PWM
-		MOV	PWMP,			#10h	;	Prescaler
+;		PWM prescaler (%50)
+		MOV		PWMP,		#0FH
 		
 ;		Etenak eta FLAG-ak
-;?????	SETB IT0	;	IT0 = TCON.0 = 0x88.0 (activado por transición)
 		SETB EA		;	Etenak gaitu
 		
 		RET
@@ -175,7 +199,7 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_0:
-		SETB	EX0				;	Botoiaren etena gaitu
+		MOV		IEN0,	#81H	;	Botoiaren etena gaitu
 		ORL		PCON,	#01H	;	IDLE modua aktibatu
 		CLR 	EX0				;	INT0 etena desgaitu
 		CLR		EA				;	Etenak desgaitu
@@ -216,7 +240,6 @@ ORG 7BH
 	GS1_LEHENENGO_ALDIA:
 ;		Atea lehengo aldiz ireki da
 		MOV		GERTAERA,	#00H
-		SETB	ATE_KONT
 		RET
 	
 ;*********************************************************************************************************************************
@@ -311,6 +334,7 @@ ORG 7BH
 	GS4_TENPERATURA_KONPROBATU:
 		JB	TICK_TENP_EGOKIA,	GS4_TENPERATURA_EGOKIA
 		MOV	GERTAERA,			#01H
+		RET
 		
 	GS4_TENPERATURA_EGOKIA:
 		MOV	GERTAERA,	#00H
@@ -484,61 +508,204 @@ ORG 7BH
 		
 	TENP_IRAKURKETA_HASI:
 		CLR		TICK_IRAKURRITA
-		ORL		ADCON, #08H		;ADCS 1-era jarri (ADCON.3)
+		ORL		ADCON, 		#08H	;	ADCS 1-era jarri (ADCON.3)
 		RET
 		
 	GARBITU:
-		CLR	TICK_TENP_EGOKIA
-		CLR	P3.6
-		CLR EAD
-		MOV	EGOERA,	#05H
+		CLR		TICK_TENP_EGOKIA
+		CLR		P3.6
+		CLR 	EAD
+		MOV		EGOERA,		#05H
+		MOV		DENBORA,	#32H
+		MOV		TMOD,		#02H
+		SETB	ET0
 		SETB	TR0
 		SETB	EA
-		//	FALTA LO DEL PWM	---->	PREGUNTAR
+		
+		MOV		PWM0,		#0E8H
 		RET
 		
 	NORANZKOA_ALDATU:
-		//TODO
+		CPL		P2.7
+		CLR		TICK_15s
 		RET
 		
-		
 	HUSTU:	
-		MOV		EGOERA,	#06H
+		CLR		TICK_50min
+		CLR		TICK_10min
+		CLR		TICK_1min
+		CLR		ET0
 		CLR		TR0
 		CLR		EA
+		MOV		EGOERA,	#06H
+		ACALL	DISPLAYAK_AMATATU
 		SETB	P1.0
 		RET
 	
 	ZENTRIFUGATU:
 		MOV	EGOERA,	#07H
+		SETB	ET0
+		SETB	EA
+		SETB	TR0
+		MOV		PWM0,	#01AH
 		//TODO
 		RET
 	
 	AMAITU:
-		MOV	EGOERA,	#08H
-		//TODO
+		MOV		EGOERA,	#08H
+		CLR		TICK_10min
+		CLR		TR0
+		CLR		ET0
+		CLR		EA
+		MOV		PWM0,	#0FFH
+		ACALL	DISPLAYAK_EGUNERATU_FF
 		RET
 	
 	BUKATUTA:
-		MOV	EGOERA,	#00H
-		ACALL	DISPLAYAK_EGUNERATU_PA
-		RET
+		AJMP	PROGRAMA_HASIERA
 	
-	
-	
-	
+;*********************************************************************************************************************************
+;													DISPLAYAK
+;*********************************************************************************************************************************
 	
 	DISPLAYAK_AMATATU:
+		MOV	DH,	#00H
+		MOV	DU,	#00H
+		RET
 	
 	DISPLAYAK_EGUNERATU_PA:
+		MOV	DH,	#73H	;	P = 0111 0011b = 73H
+		MOV	DU,	#77H	;	A = 0111 0111b = 77H
+		RET
 	
 	DISPLAYAK_EGUNERATU_SP:
+		MOV	DH,	#6DH	;	S = 0110 1101b = 6DH
+		MOV	DU,	#73H	;	P = 0111 0011b = 73H
+		RET
+	
+	DISPLAYAK_EGUNERATU_FF:
+		MOV	DH,	#71H	;	F = 0111 0001b = 71H
+		MOV	DU,	#71H	;	F = 0111 0001b = 71H
+		RET
 	
 	DISPLAYAK_EGUNERATU_DENBORA:
+		CLR TICK_1min
+		MOV	A,	DENBORA
+		SUBB	A,	MINUTUAK
+		MOV	B,	#0AH
+		DIV	AB
+		ACALL	DISPLAY_ZENBAKIA_ZEHAZTU
+		MOV	DH,	A
+		MOV	A,	B
+		ACALL	DISPLAY_ZENBAKIA_ZEHAZTU
+		MOV	DU,	A
+		RET
+		
+	DISPLAY_ZENBAKIA_ZEHAZTU:
+		INC	A
+		MOVC	A,	@ A+PC
+		RET
+		DB	03FH	;	0 = 0011 1111b
+		DB	06H		;	1 = 0000 0110b
+		DB	05BH	;	2 = 0101 1011b
+		DB	09FH	;	3 = 0100 1111b
+		DB	066H	;	4 = 0110 0110b
+		DB	06DH	;	5 = 0110 1101b
+		DB	07DH	;	6 = 0111 1101b
+		DB	07H		;	7 = 0000 0111b
+		DB	07FH	;	8 = 0111 1111b
+		DB	06FH	;	9 = 0110 1111b
+		
 
+;*********************************************************************************************************************************
+;													ETENEN ERRUTINA LAGUNTZAILEAK
+;*********************************************************************************************************************************
 
+	UNITATE_BIHURKETA:
+		INC	KONT_1ms
+		MOV	A,	#0FAH
+		CJNE	A,	KONT_1ms,	UB_AMAIERA
+		INC	KONT_250ms
+		MOV	KONT_1ms,	#00H
+		MOV	A,	#04H
+		CJNE	A,	KONT_250ms,	UB_AMAIERA
+		INC	SEGUNDUAK
+		MOV	KONT_250ms,	#00H
+		UB_AMAIERA:
+		RET
 
+	T_FLAG_KONPROBATU:
+		ACALL	KONPROBATU_15s
+		ACALL	KONPROBATU_1min
+		ACALL	KONPROBATU_10min
+		ACALL	KONPROBATU_50min
+		RET
 
+	KONPROBATU_15s:
+		MOV	A,	#0FH
+		CJNE	A,	SEGUNDUAK,	K15s_AMAIERA
+		SETB	TICK_15s
+		K15s_AMAIERA:
+		RET
 
-
+	KONPROBATU_1min:
+		MOV	A,	#03CH
+		CJNE	A,	SEGUNDUAK,	K1min_AMAIERA
+		SETB	TICK_1min
+		INC	MINUTUAK
+		MOV	SEGUNDUAK,	#00H
+		K1min_AMAIERA:
+		RET
+	
+	KONPROBATU_10min:
+		MOV	A,	#0AH
+		CJNE	A,	MINUTUAK,	K10min_AMAIERA
+		SETB	TICK_10min
+		K10min_AMAIERA:
+		RET
+			
+	KONPROBATU_50min:
+		MOV	A,	#032H
+		CJNE	A,	MINUTUAK,	K50min_AMAIERA
+		SETB	TICK_50min
+		K50min_AMAIERA:
+		RET
+			
+			
+	PISUA_IRAKURRI:
+		MOV		A,	#0E6H
+		CLR		C
+		SUBB	A,	ADCH
+		JC		GAINKARGA_DAGO
+		CLR		TICK_GAINK
+		RET
+	
+	GAINKARGA_DAGO:
+		SETB	TICK_GAINK
+		RET
+		
+	
+	TENPERATURA_IRAKURRI:
+		ACALL	TENPERATURA_HAUTATU
+		SUBB	A,	ADCH
+		JC		TENPERATURA_EGOKIA
+		CLR		TICK_TENP_EGOKIA
+		RET
+		
+	TENPERATURA_EGOKIA:
+		SETB	TICK_TENP_EGOKIA
+		RET
+		
+	TENPERATURA_HAUTATU:
+		MOV		A,	#00H
+		MOV		A,	P3
+		ANL		A,	#03H
+		INC	A
+		MOVC	A,	@ A+PC
+		RET
+		DB	00H		;	Ur hotza
+		DB	066H	;	40ºC
+		DB	099H	;	60ºC
+		DB	0CDH	;	80ºC
+		
 END
