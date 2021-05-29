@@ -10,7 +10,7 @@ $NOMOD51
 	GERTAERA			EQU	21H
 	TENPERATURA			EQU	22H
 	DENBORA				EQU	23H
-		
+	
 	MIN_UNIT			EQU 23H
 	MIN_HAMAR			EQU	24H
 	KONT_1ms			EQU 25H
@@ -19,40 +19,37 @@ $NOMOD51
 	MINUTUAK			EQU	28H
 		
 	ATE_KONT			EQU	29H.0
-	GAINK_KONT			EQU	29H.1
 	
 ;	Sentsoreak
 	ATE_SNTS			EQU	P1.1
 	BETE_SNTS			EQU	P1.2
 	HUSTU_SNTS			EQU	P1.3
-		
+	
 ;	Motoreak
 	HUSTU_MTR			EQU	P1.0
 	BETE_MTR			EQU	P3.3
 	BEROG				EQU	P3.6
 		
 ;	Hamarrekoen Displaya
-	DH					EQU	P0
-	DH_ZENB				EQU	2BH
-	
+	DH				EQU	P0
+
 ;	Unitateen displaya
-	DU					EQU	P2
-	DU_ZENB				EQU	2CH
+	DU				EQU	P2
 	
 ;	Etenen FLAG-ak (T0, T1, ADC0, ADC1 eta IDLE)
-	TICK_15s			EQU	29H.2
-	TICK_1min			EQU	29H.3
-	TICK_10min			EQU	29H.4
-	TICK_50min			EQU	29H.5
-	TICK_GAINK			EQU	29H.6
-	TICK_TENP_EGOKIA	EQU	29H.7
-	TICK_IRAKURRITA		EQU	2AH.0
-	TICK_BOTOIA			EQU	2AH.1
+	TICK_15s			EQU	29H.1
+	TICK_1min			EQU	29H.2
+	TICK_10min			EQU	29H.3
+	TICK_50min			EQU	29H.4
+	TICK_GAINK			EQU	29H.5
+	TICK_TENP_EGOKIA		EQU	29H.6
+	TICK_IRAKURRITA			EQU	29H.7
+	TICK_BOTOIA			EQU	2AH.0
 
 ;*********************************************************************************************************************************
 
 ORG 00H
-	AJMP PROGRAMA_HASIERA
+	AJMP 	PROGRAMA_HASIERA
 
 ;*********************************************************************************************************************************
 ; 													ETENAK
@@ -65,48 +62,32 @@ ORG 03H		;	INT0 etena
 	
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
-ORG	0BH		;	TIMER0 etena
+ORG	0BH	;	TIMER0 etena, 1ms-rako konfiguratuta
 
 	PUSH	ACC
 	PUSH	B
 	PUSH	PSW
-	MOV		TH0,	#0F8H
-	MOV		TL0,	#030H
-	ACALL	UNITATE_BIHURKETA
-	ACALL	T_FLAG_KONPROBATU
-	POP		PSW
-	POP		B
-	POP		ACC
+	MOV	TH0,	#0F8H		
+	MOV	TL0,	#030H
+	ACALL	UNITATE_BIHURKETA	;	milisegundoak beste denbora-unitatetara pasatzeko azpierrutina, denbora errazago neurtu ahal izateko
+	ACALL	T_FLAG_KONPROBATU	;	Igarotako denboraren arabera dagokion FLAG-ak aktibatzeko azpierrutina
+	POP	PSW
+	POP	B
+	POP	ACC
 	RETI
 
 ;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
-ORG	1BH		;	TIMER1 etena
-;	_______________________________________________________________________________________________________________________________
-	//TODO
-;	_______________________________________________________________________________________________________________________________
-
-;* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-
-ORG	53H		;	ADC0 etena ---> ADCI=1 denean
+ORG	53H	;	ADC0 etena ---> ADCI=1 denean
 
 	PUSH	ACC
 	PUSH	B
 	PUSH	PSW
-	SETB	TICK_IRAKURRITA
-	ANL		ADCON,	#0EFH
-	MOV		A,	#02H
-	CLR		C
-	SUBB	A,	EGOERA
-	JC		ADC_TENPERATURA
-	ACALL	PISUA_IRAKURRI
-	AJMP	ADC_AMAIERA
-	ADC_TENPERATURA:
-	ACALL	TENPERATURA_IRAKURRI
-	ADC_AMAIERA:
-	POP		PSW
-	POP		B
-	POP		ACC 
+	SETB	TICK_IRAKURRITA		;	ADC-ren balioa irakurri egin dela jakiteko
+	ANL	ADCON,	#0EFH		;	Irakurketa amaitzean ADCI flag-a (ADCON.4 bit-a) software bidez ezabatu behar da
+	POP	PSW
+	POP	B
+	POP	ACC 
 	RETI
 
 ;*********************************************************************************************************************************
@@ -115,11 +96,11 @@ ORG	53H		;	ADC0 etena ---> ADCI=1 denean
 
 ORG 7BH
 	PROGRAMA_HASIERA:
-		ACALL HASIERAKETAK
-	
-	LOOP:
-		ACALL EGOERA_MAKINA
-		AJMP LOOP
+		ACALL 	HASIERAKETAK	;	Programan erabiliko diren aldagai eta erregistro guztiak hasieratu
+		
+	LOOP:				;	Begizta nagusia, programak etengabe egongo da honen barruan bueltaka
+		ACALL 	EGOERA_MAKINA
+		AJMP 	LOOP
 			
 ;*********************************************************************************************************************************
 ; 													HASIERAKETAK
@@ -127,32 +108,26 @@ ORG 7BH
 
 	HASIERAKETAK:
 ;		Aldagaiak
-		MOV	EGOERA,			#00H
-		MOV	GERTAERA,		#00H
-		MOV TENPERATURA,	#00H
-		CLR ATE_KONT
-		CLR	GAINK_KONT
+		MOV	EGOERA,		#00H
+		MOV	GERTAERA,	#00H
+		MOV 	TENPERATURA,	#00H
+		CLR 	ATE_KONT
 		
 ;		Timerren FLAG-ak eta laguntzaileak
-		MOV MIN_UNIT,		#00H
-		MOV MIN_HAMAR,		#00H
-		MOV	KONT_1ms,		#00H
-		MOV	KONT_250ms,		#00H
-		MOV	SEGUNDUAK,		#00H
-		MOV	MINUTUAK,		#00H
+		MOV 	MIN_UNIT,	#00H
+		MOV 	MIN_HAMAR,	#00H
+		MOV	KONT_1ms,	#00H
+		MOV	KONT_250ms,	#00H
+		MOV	SEGUNDUAK,	#00H
+		MOV	MINUTUAK,	#00H
 		
 ;		Motoreak
 		CLR	HUSTU_MTR
 		CLR	BETE_MTR
 		CLR	BEROG
 		
-;		Hamarrekoen Displaya
-		MOV	DH,				#00H
-		MOV	DH_ZENB,		#00H
-	
-;		Unitateen displaya
-		MOV	DU,				#00H
-		MOV	DU_ZENB,		#00H
+;		Displayak amatatuta hasieratu
+		ACALL	DISPLAYAK_AMATATU
 		
 ;		Etenen FLAG-ak (T0, T1, ADC0, ADC1 eta IDLE)
 		CLR	TICK_15s
@@ -165,11 +140,10 @@ ORG 7BH
 		CLR	TICK_BOTOIA
 		
 ;		PWM prescaler (%50)
-		MOV		PWMP,		#0FH
+		MOV	PWMP,	#7FH
 		
 ;		Etenak eta FLAG-ak
-		SETB EA		;	Etenak gaitu
-		
+		SETB 	EA		;	Etenak gaitu
 		RET
 		
 ;*********************************************************************************************************************************
@@ -177,10 +151,10 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_MAKINA:
-		MOV	A,	EGOERA
-		RL	A
-		MOV	DPTR,	#EGOERA_TAULA
-		JMP	@A+DPTR
+		MOV	A,	EGOERA		;	Egoera akumuladorean gorde
+		RL	A			;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EGOERA_TAULA	;	Egoera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR		;	Egoera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 	
 	EGOERA_TAULA:
 		AJMP	EGOERA_0	;	IDLE
@@ -199,12 +173,12 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_0:
-		MOV		IEN0,	#81H	;	Botoiaren etena gaitu
-		ORL		PCON,	#01H	;	IDLE modua aktibatu
-		CLR 	EX0				;	INT0 etena desgaitu
-		CLR		EA				;	Etenak desgaitu
-		CLR 	TICK_BOTOIA		;	FLAG-a desgaitu
-		MOV		EGOERA,	#01H
+		MOV	IEN0,	#81H	;	Botoiaren etena gaitu
+		ORL	PCON,	#01H	;	IDLE modua aktibatu
+		CLR 	EX0		;	INT0 etena desgaitu
+		CLR	EA		;	Etenak desgaitu
+		CLR 	TICK_BOTOIA	;	FLAG-a desgaitu
+		MOV	EGOERA,	#01H	;	1. egoerara aldatu
 		RET
 
 ;*********************************************************************************************************************************
@@ -212,34 +186,29 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_1:
-		ACALL	GERTAERA_SORGAILUA_1
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_1
-		JMP		@ A+DPTR
-		
-	EKINTZA_TAULA_1:
-		AJMP	ATEA_IREKI
-		AJMP	ATEA_ITXI
-		RET
+		ACALL	GERTAERA_SORGAILUA_1		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,		GERTAERA	;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_1	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
+				
+	EKINTZA_TAULA_1:			;	Egoerari dagozkion ekintza guztiak zerrendatzen ditu (gertaeraren arabaera aukeratzen da zein egin)
+		AJMP	ATEA_IREKI		;	Lehenengo aldiz atea irekitzen denean
+		AJMP	ATEA_ITXI		;	Atea ixten denean
+		AJMP	GERTAERARIK_EZ			Atea irekita dagoenean, baina aurreko bueltan jada irekita bazegoen (displayak etengabe ez eguneratzeko)
 		
 	GERTAERA_SORGAILUA_1:
-		JB		ATE_SNTS,	GS1_ATE_IREKIA
-;		Atea itxita dago
-		MOV		GERTAERA,	#01H
-		CLR		ATE_KONT
+		JB	ATE_SNTS,	GS1_ATE_IREKIA	;	Atearen egoera konprobatu
+		MOV	GERTAERA,	#01H		;	Atea itxita dago
 		RET
 	
-	GS1_ATE_IREKIA:
-;		Atea irekita dago
-		JNB		ATE_KONT,	GS1_LEHENENGO_ALDIA
-;		Aurreko bueltan atea jada irekita zegoen
-		MOV		GERTAERA,	#02H
+	GS1_ATE_IREKIA:						;	Atea irekita dago
+		JNB	ATE_KONT,	GS1_LEHENENGO_ALDIA	;	Atea irekita dagoen lehenengo buelta den konprobatu
+		MOV	GERTAERA,	#02H			;	Aurreko bueltan atea jada irekita zegoen
 		RET
 	
-	GS1_LEHENENGO_ALDIA:
-;		Atea lehengo aldiz ireki da
-		MOV		GERTAERA,	#00H
+	GS1_LEHENENGO_ALDIA:			;	Atea lehengo aldiz ireki da
+		MOV	GERTAERA,	#00H
 		RET
 	
 ;*********************************************************************************************************************************
@@ -247,42 +216,36 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_2:
-		ACALL	GERTAERA_SORGAILUA_2
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_2
-		JMP		@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_2		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,		GERTAERA	;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_2	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 
 	EKINTZA_TAULA_2:
-		AJMP	ATEA_IREKI
-		AJMP	PISU_IRAKURKETA_HASI
-		AJMP	GAINKARGA
-		AJMP	BETE
-		RET
+		AJMP	ATEA_IREKI	;	Atea irekitzen denean
+		AJMP	GAINKARGA	;	Gainkarga dago
+		AJMP	BETE		;	Pisua egokia da eta danborra urez bete daiteke
+		AJMP	GERTAERARIK_EZ	;	Pisuaren irakurketa oraindik ez da amaitu
 		
 	GERTAERA_SORGAILUA_2:
-		JB	ATE_SNTS,			GS2_ATE_IREKIA
-		JB	TICK_IRAKURRITA,	GS2_GAINKARGA_KONPROBATU
-;		Oraindik ez da pisua irakurri
-		MOV	GERTAERA,	#04H
+		JB	ATE_SNTS,		GS2_ATE_IREKIA			;	Atearen egoera konprobatu
+		JB	TICK_IRAKURRITA,	GS2_GAINKARGA_KONPROBATU	;	Pisuaren irakurketa amaitu den konprobatu
+		MOV	GERTAERA,	#03H					;	Oraindik ez da pisua irakurri
 		RET
 		
 	GS2_ATE_IREKIA:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	Atea ireki da
 		RET
-	
+		
 	GS2_GAINKARGA_KONPROBATU:
-		JB	TICK_GAINK,	GS2_GAINKARGA
-		MOV	GERTAERA,	#03H
+		ACALL	PISUA_IRAKURRI			;	Pisu irakurketaren emaitza konprobatu
+		JB	TICK_GAINK,	GS2_GAINKARGA	;	Gainkarga konprobatu
+		MOV	GERTAERA,	#02H		;	Pisua egokia da
 		RET		
 	
 	GS2_GAINKARGA:
-		JNB	GAINK_KONT,	GS2_LEHENENGO_ALDIA
-		MOV GERTAERA,	#01H
-		RET
-		
-	GS2_LEHENENGO_ALDIA:
-		MOV	GERTAERA,	#02H
+		MOV	GERTAERA,	#01H	;	Gainkarga dago
 		RET
 		
 ;*********************************************************************************************************************************
@@ -290,24 +253,23 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_3:
-		ACALL	GERTAERA_SORGAILUA_3
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_3
-		JMP		@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_3		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,	GERTAERA		;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_3	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 	
 	EKINTZA_TAULA_3:
-		AJMP	BEROTU
-		RET
+		AJMP	BEROTU			;	Danborra guztiz beteta dago eta ura berotu daiteke
+		AJMP	GERTAERARIK_EZ		;	Oraindik danborra ez dago beteta
 		
 	GERTAERA_SORGAILUA_3:
-		JB	BETE_SNTS,	GS3_BETETA
-;		Oraindik ez da bete
-		MOV	GERTAERA,	#01H
+		JB	BETE_SNTS,	GS3_BETETA	;	Danborra beteta dagoen konprobatu
+		MOV	GERTAERA,	#01H		;	Oraindik ez dago beteta
 		RET
 		
 	GS3_BETETA:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	Guztiz beteta dago
 		RET
 		
 ;*********************************************************************************************************************************
@@ -315,29 +277,30 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_4:
-		ACALL	GERTAERA_SORGAILUA_4
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_4
-		JMP	@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_4		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,	GERTAERA		;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_4	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 		
 	EKINTZA_TAULA_4:
-		AJMP	GARBITU
-		AJMP	TENP_IRAKURKETA_HASI
-		RET
+		AJMP	GARBITU			;	Urak tenperatura egokia du eta garbiketa hasi daiteke
+		AJMP	TENP_IRAKURKETA_HASI	;	Aurreko irakurketan tenperatura oraindik ez zen nahikoa eta berriro irakurriko da
+		AJMP	GERTAERARIK_EZ		;	Oraindik ez da irakurketa amaitu
 		
 	GERTAERA_SORGAILUA_4:
-		JB	TICK_IRAKURRITA,	GS4_TENPERATURA_KONPROBATU
-		MOV	GERTAERA,			#02H
+		JB	TICK_IRAKURRITA,	GS4_TENPERATURA_KONPROBATU	;	Irakurketa amitu den konprobatu
+		MOV	GERTAERA,		#02H				;	Oraindik ez da irakurketa amaitu
 		RET
 		
 	GS4_TENPERATURA_KONPROBATU:
-		JB	TICK_TENP_EGOKIA,	GS4_TENPERATURA_EGOKIA
-		MOV	GERTAERA,			#01H
+		ACALL	TENP_IRAKURRI						;	Tenperatura irakurketaren emaitza konprobatu
+		JB	TICK_TENP_EGOKIA,	GS4_TENPERATURA_EGOKIA		;	Tenperatura egokia den konprobatu
+		MOV	GERTAERA,		#01H				;	Tenperatura oraindik ez da nahikoa eta berriro irakurri behar da
 		RET
 		
 	GS4_TENPERATURA_EGOKIA:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	Tenperatura egokia da
 		RET
 		
 ;*********************************************************************************************************************************
@@ -345,35 +308,35 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_5:
-		ACALL	GERTAERA_SORGAILUA_5
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_5
-		JMP		@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_5		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,		GERTAERA	;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_5	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 		
 	EKINTZA_TAULA_5:
-		AJMP	NORANZKOA_ALDATU
-		AJMP	DISPLAYAK_EGUNERATU_DENBORA
-		AJMP	HUSTU
-		RET
+		AJMP	NORANZKOA_ALDATU		;	15 s igaro dira eta motorraren errotazio noraznkoa aldatuko da
+		AJMP	DISPLAYAK_EGUNERATU_DENBORA	;	1 min igaro da eta displayetan geeratzen den denbora eguneratu behar da
+		AJMP	HUSTU				;	50 min igaro dira eta danborra hustuko da
+		AJMP	GERTAERARIK_EZ			;	Gertaerarik ez
 		
 	GERTAERA_SORGAILUA_5:
-		JB	TICK_50min,	GS5_50min
-		JB	TICK_1min,	GS5_1min
-		JB	TICK_15s,	GS5_15s
-		MOV	GERTAERA,	#03H
+		JB	TICK_50min,	GS5_50min	;	50 min igaro diren konprobatu
+		JB	TICK_1min,	GS5_1min	;	1 min igaro den konprobatu
+		JB	TICK_15s,	GS5_15s		;	15 s igaro diren konprobatu
+		MOV	GERTAERA,	#03H		;	Gertaerarik ez
 		RET
 		
 	GS5_50min:
-		MOV	GERTAERA,	#02H
+		MOV	GERTAERA,	#02H	;	50 min igaro dira
 		RET
 	
 	GS5_1min:
-		MOV	GERTAERA,	#01H
+		MOV	GERTAERA,	#01H	;	1 min igaro da
 		RET
 	
 	GS5_15s:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	15 s igaro dira
 		RET
 		
 ;*********************************************************************************************************************************
@@ -381,23 +344,23 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_6:
-		ACALL	GERTAERA_SORGAILUA_6
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_6
-		JMP		@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_6		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,	GERTAERA		;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_6	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 		
 	EKINTZA_TAULA_6:
-		AJMP	ZENTRIFUGATU
-		RET
+		AJMP	ZENTRIFUGATU		;	Danborra guztiz husu da eta zentrifugatzen hasiko da
+		AJMP	GERTAERARIK_EZ		;	Danborra oraindik ez dago hutsik
 		
 	GERTAERA_SORGAILUA_6:
-		JB	BETE_SNTS,	GS6_HUTSIK
-		MOV	GERTAERA,	#01H
+		JB	HUSTU_SNTS,	GS6_HUTSIK	;	Hustk dagoen konprobatu
+		MOV	GERTAERA,	#01H		;	Oraindik ez dago hutsik
 		RET
 		
 	GS6_HUTSIK:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	Hutsik dago
 		RET
 		
 ;*********************************************************************************************************************************
@@ -405,29 +368,29 @@ ORG 7BH
 ;*********************************************************************************************************************************
 
 	EGOERA_7:
-		ACALL	GERTAERA_SORGAILUA_7
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_7
-		JMP		@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_7		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,	GERTAERA		;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_7	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 		
 	EKINTZA_TAULA_7:
-		AJMP	AMAITU
-		AJMP	DISPLAYAK_EGUNERATU_DENBORA
-		RET
+		AJMP	AMAITU				;	10 min igaro dira eta zentrifugatua amaitu da
+		AJMP	DISPLAYAK_EGUNERATU_DENBORA	;	1 min igaro da eta displayetan denbora eguneratu behar da
+		AJMP	GERTAERARIK_EZ			;	Gertaerarik ez
 		
 	GERTAERA_SORGAILUA_7:
-		JB	TICK_10min,	GS7_10min
-		JB	TICK_1min,	GS7_1min
-		MOV	GERTAERA,	#02H
+		JB	TICK_10min,	GS7_10min	;	10 min igaro diren konprobatu
+		JB	TICK_1min,	GS7_1min	;	1 min igaro den konprobatu
+		MOV	GERTAERA,	#02H		;	Gertaerarik ez
 		RET
 		
 	GS7_10min:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	10 min igaro dira
 		RET
 		
 	GS7_1min:
-		MOV	GERTAERA,	#01H
+		MOV	GERTAERA,	#01H	;	1 min igaro da
 		RET
 		
 ;*********************************************************************************************************************************
@@ -435,23 +398,23 @@ ORG 7BH
 ;*********************************************************************************************************************************
 	
 	EGOERA_8:
-		ACALL	GERTAERA_SORGAILUA_8
-		MOV		A,		GERTAERA
-		RL		A
-		MOV		DPTR,	#EKINTZA_TAULA_8
-		JMP		@ A+DPTR
+		ACALL	GERTAERA_SORGAILUA_8		;	Gertaera sorgailua deitu, gertaeraren arabera ekintza bat aukeratu ahal izateko
+		MOV	A,	GERTAERA		;	Gertaera akumuladorean gorde
+		RL	A				;	Bider 2 egin, AJMP instrukzio bakoitzak 2 byte okupatzen duelako
+		MOV	DPTR,	#EKINTZA_TAULA_8	;	Gertaera taularen memoria helbidea DPTR erregistroan gorde
+		JMP	@ A+DPTR			;	Gertaera taularen helbideari dagokion egoeraren balioa (bider 2) gehitu, eta horra salto egin
 		
 	EKINTZA_TAULA_8:
-		AJMP	BUKATUTA
-		RET
+		AJMP	BUKATUTA		;	Atea ireki da arropa ateratzeko
+		AJMP	GERTAERARIK_EZ		;	Oraindik ez da atea ireki
 		
 	GERTAERA_SORGAILUA_8:
-		JB	ATE_SNTS,	GS8_ATE_IREKIA
-		MOV	GERTAERA,	#01H
+		JB	ATE_SNTS,	GS8_ATE_IREKIA	;	Atea ireki den konprobatu
+		MOV	GERTAERA,	#01H		;	Oraindik ez da atea ireki
 		RET
 		
 	GS8_ATE_IREKIA:
-		MOV	GERTAERA,	#00H
+		MOV	GERTAERA,	#00H	;	Atea ireki da
 		RET		
 		
 ;*********************************************************************************************************************************
@@ -459,146 +422,202 @@ ORG 7BH
 ;*********************************************************************************************************************************
 		
 	ATEA_IREKI:
-		SETB	ATE_KONT
-		MOV		EGOERA,	#01H
-		ACALL	DISPLAYAK_EGUNERATU_PA
+		SETB	ATE_KONT			;	Atea lehenengo aldiz irekitzean flag-a altxatzen da
+		MOV	EGOERA,	#01H			;	1. egoera jarri
+		ACALL	DISPLAYAK_EGUNERATU_PA		;	Displayetan PA bistaratu
 		RET
 		
 	ATEA_ITXI:
-		CLR		ATE_KONT
-		MOV		EGOERA,	#02H
-		ACALL	DISPLAYAK_AMATATU
-		
-		SETB	EAD
-		ANL		ADCON,	#0F8H	;	Hiru ADDR-ak 0-ra jarri ADC0 aukeratzeko
-		ANL		ADCON,	#0DFH	;	ADEX 0-ra jarri software modua aukeratzeko (ADCON.5)
-		SETB	EAD
-		SETB	EA
-		ACALL	PISU_IRAKURKETA_HASI
+		CLR	ATE_KONT		;	Ate irekiaren FLAG-a jaitsi
+		MOV	EGOERA,	#02H		;	2. egoera jarri
+		ACALL	DISPLAYAK_AMATATU	;	Displayak amatatu
+		ANL	ADCON,	#0F8H		;	Hiru ADDR-ak 0-ra jarri ADC0 aukeratzeko
+		ANL	ADCON,	#0DFH		;	ADEX 0-ra jarri software modua aukeratzeko (ADCON.5)
+		SETB	EAD			;	ADCaren etenak gaitu
+		SETB	EA			;	Etenak gaitu
+		ACALL	PISU_IRAKURKETA_HASI	;	Pisu irakurketa hasi
 		RET
 		
 	PISU_IRAKURKETA_HASI:
-		CLR TICK_IRAKURRITA
-		ORL		ADCON,	#08H	;	ADCS 1-era jarri (ADCON.3) irakurketa hasteko
+		CLR 	TICK_IRAKURRITA		;	Irakurketa berria hasiko denez, flag-a jaitsi
+		ORL	ADCON,	#08H		;	ADCS 1-era jarri (ADCON.3) irakurketa hasteko
 		RET
 		
 	GAINKARGA:
-		SETB	GAINK_KONT
-		ACALL	DISPLAYAK_EGUNERATU_SP
+		ACALL	DISPLAYAK_EGUNERATU_SP		;	Displayetan SP bistaratu
 		RET
 		
 	BETE:
-		CLR		TICK_GAINK
-		CLR		GAINK_KONT
-		MOV		EGOERA,	#03H
-		ACALL	DISPLAYAK_AMATATU
-		SETB	P3.3
+		CLR	EAD			;	ADCren etenak desgaitu
+		CLR	EA			;	Etenak desgaitu
+		CLR	TICK_GAINK		;	Gainkargaren flag-a jaitsi
+		MOV	EGOERA,	#03H		;	3. egoera jarri
+		ACALL	DISPLAYAK_AMATATU	;	Displayak amatatu
+		SETB	BETE_MTR		;	Ur sarreraren balbula aktibatu
 		RET
 		
 	BEROTU:
-		MOV		EGOERA,	#04H
-		CLR		P3.3
-		SETB	P3.6
-		ANL		ADCON, #0F9H	;AADR 1 eta 2 0-ra eta AADR 0 1-era jarri ADC1 aukeratzeko
-		ANL		ADCON, #0DFH	;ADEX 0-ra jarri software modua aukeratzeko (ADCON.5)
-		SETB	EAD
-		SETB	EA
-		ACALL	TENP_IRAKURKETA_HASI
+		MOV	EGOERA,	#04H		;	4. egoera jarri
+		CLR	BETE_MTR		;	Ur sarreraren balbula itxi
+		SETB	BEROG			;	Berogailua piztu
+		ANL	ADCON, #0F9H		;	AADR 1 eta 2 0-ra eta AADR 0 1-era jarri ADC1 aukeratzeko
+		ANL	ADCON, #0DFH		;	ADEX 0-ra jarri software modua aukeratzeko (ADCON.5)
+		SETB	EAD			;	ADCaren etenak gaitu
+		SETB	EA			;	Etenak gaitu
+		ACALL	TENP_IRAKURKETA_HASI	;	Tenperatura irakurtzen hasi
 		RET
 		
 	TENP_IRAKURKETA_HASI:
-		CLR		TICK_IRAKURRITA
-		ORL		ADCON, 		#08H	;	ADCS 1-era jarri (ADCON.3)
+		CLR	TICK_IRAKURRITA		;	Irakurketa berria hasiko denez, flag-a jaitsi	
+		ORL	ADCON, 	#08H	;	ADCS 1-era jarri (ADCON.3) irakurketa hasteko
 		RET
 		
 	GARBITU:
-		CLR		TICK_TENP_EGOKIA
-		CLR		P3.6
-		CLR 	EAD
-		MOV		EGOERA,		#05H
-		MOV		DENBORA,	#32H
-		MOV		TMOD,		#02H
-		SETB	ET0
-		SETB	TR0
-		SETB	EA
+		CLR	TICK_TENP_EGOKIA	;	Tenperatura egokiaren flag-a jaitsi
+		CLR	BEROG			;	Berogailua itzali
+		CLR 	EAD			;	ADCren etenak desgaitu
+		MOV	EGOERA,		#05H	;	5. egoera jarri
+		MOV	DENBORA,	#32H	;	60 minitu gorde
+		MOV	TMOD,		#02H	;	Timer modua aukeratu (2)
+		SETB	ET0			;	Timer0-ren etenak gaitu
+		SETB	TR0			;	Timer 0 piztu
 		
-		MOV		PWM0,		#0E8H
+		MOV	PWM0,	#0E8H	;	60rpm-ko abiaduran jarri motorra
 		RET
 		
 	NORANZKOA_ALDATU:
-		CPL		P2.7
-		CLR		TICK_15s
+		CPL	P2.7		;	Osagarria kalkulatu, motorraren errotazio noranzkoa aldatzeko
+		CLR	TICK_15s	;	15 s flg-a jaitsi
 		RET
 		
 	HUSTU:	
-		CLR		TICK_50min
-		CLR		TICK_10min
-		CLR		TICK_1min
-		CLR		ET0
-		CLR		TR0
-		CLR		EA
-		MOV		EGOERA,	#06H
-		ACALL	DISPLAYAK_AMATATU
-		SETB	P1.0
+		MOV	EGOERA,	#06H		;	6. egoera jarri
+		CLR	TICK_50min		;	50 min flag-a jaitsi
+		CLR	TICK_10min		;	10 min flag-a jaitsi
+		CLR	TICK_1min		;	1 min flag-a jaitsi
+		CLR	TR0			;	Timer0 amatatu
+		CLR	ET0			;	Timer0-ren etenak desgaitu
+		CLR	EA			;	Etenak desgaitu
+		MOV	PWM0,	#0FFH		;	Motorra gelditu
+		ACALL	DISPLAYAK_AMATATU	;	Dsiplayak amatatu
+		SETB	HUSTU_MTR		;	Husteko motorra piztu
 		RET
 	
 	ZENTRIFUGATU:
-		MOV	EGOERA,	#07H
-		SETB	ET0
-		SETB	EA
-		SETB	TR0
-		MOV		PWM0,	#01AH
-		//TODO
+		CLR	HUSTU_MTR		;	Husteko motorra amatatu
+		MOV	EGOERA,	#07H		;	7. egoera jarri
+		SETB	ET0			;	Timer0-ren etenak gaitu
+		SETB	EA			;	Etenak gaitu
+		SETB	TR0			;	Timer0 piztu
+		MOV	DENBORA,	#0AH	;	10 minutu gorde
+		MOV	PWM0,	#01AH		;	600 rpm-ko abiaduran jarri motorra
 		RET
 	
 	AMAITU:
-		MOV		EGOERA,	#08H
-		CLR		TICK_10min
-		CLR		TR0
-		CLR		ET0
-		CLR		EA
-		MOV		PWM0,	#0FFH
-		ACALL	DISPLAYAK_EGUNERATU_FF
+		MOV	EGOERA,	#08H			;	8. egoera jarri
+		CLR	TICK_10min			;	10 min flag-a jaitsi
+		CLR	TR0				;	Timer0 amatatu
+		CLR	ET0				;	Timer0-ren etenak desgaitu
+		CLR	EA				;	Etenak desgaitu
+		MOV	PWM0,	#0FFH			;	Motorra gelditu
+		ACALL	DISPLAYAK_EGUNERATU_FF		;	Displayetan FF bistaratu
 		RET
 	
 	BUKATUTA:
-		AJMP	PROGRAMA_HASIERA
+		MOV	EGOERA,	#00H	;	0. egoera jarri
+		RET
+		
+	GERTAERARIK_EZ:
+		RET
+		
+
+;*********************************************************************************************************************************
+;													PISU KONPROBAKETAK
+;*********************************************************************************************************************************		
+			
+	PISUA_IRAKURRI:
+		MOV	A,	#0E6H		;	4,5V-ren (gainkargaren tentsio minimoa) balio hexadezimala akumuladorean gorde
+		CLR	C			;	Carry-a ezabatu
+		SUBB	A,	ADCH		;	Gainkargaren balioa eta irakurketaren balioa kendu
+		JC	GAINKARGA_DAGO		;	Carry-a aktibatu bada, gainkarga dago (ADCH-k irakurritako balioa ezarritako balioa baino handiagoa da)
+		CLR	TICK_GAINK		;	Gainkargaren flag-a jaitsi
+		RET
+	
+	GAINKARGA_DAGO:
+		SETB	TICK_GAINK	;	Gainkargaren flag-a altxatu
+		RET
+		
+
+;*********************************************************************************************************************************
+;													TENPERATURA KONPROBAKETAK
+;*********************************************************************************************************************************
+	
+	TENP_IRAKURRI:
+		ACALL	TENPERATURA_HAUTATU		;	Hautatutako tenperatura zehaztu
+		CLR C					;	Carry-a ezabatu
+		SUBB	A,	ADCH			;	Hautatutako tenperaturaren balioa eta irakurketaren balioa kendu
+		JC	TENPERATURA_EGOKIA		;	Carry-a aktibatu bada, nahi genuen tenperatura lortu dugu, bestela, oraindik itxaron behar da
+		CLR	TICK_TENP_EGOKIA		;	Tenperatura egokiaren flag-a jaitsi
+		RET
+		
+	TENPERATURA_EGOKIA:
+		SETB	TICK_TENP_EGOKIA	;	Tenperatura egokiaren flag-a altxatu
+		RET
+		
+	TENPERATURA_HAUTATU:
+		MOV	A,	P3
+		ANL	A,	#03H
+		INC	A
+		MOVC	A,	@ A+PC
+		RET
+		DB	00H	;	Ur hotza
+		DB	066H	;	40ÂºC
+		DB	099H	;	60ÂºC
+		DB	0CCH	;	80ÂºC
 	
 ;*********************************************************************************************************************************
 ;													DISPLAYAK
 ;*********************************************************************************************************************************
 	
 	DISPLAYAK_AMATATU:
-		MOV	DH,	#00H
-		MOV	DU,	#00H
+		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
 		RET
 	
 	DISPLAYAK_EGUNERATU_PA:
-		MOV	DH,	#73H	;	P = 0111 0011b = 73H
-		MOV	DU,	#77H	;	A = 0111 0111b = 77H
+		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	#73H	;	P = 0111 0011b = 73H
+		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	#77H	;	A = 0111 0111b = 77H
 		RET
 	
 	DISPLAYAK_EGUNERATU_SP:
-		MOV	DH,	#6DH	;	S = 0110 1101b = 6DH
-		MOV	DU,	#73H	;	P = 0111 0011b = 73H
+		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	#6DH	;	S = 0110 1101b = 6DH
+		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	#73H	;	P = 0111 0011b = 73H
 		RET
 	
 	DISPLAYAK_EGUNERATU_FF:
-		MOV	DH,	#71H	;	F = 0111 0001b = 71H
-		MOV	DU,	#71H	;	F = 0111 0001b = 71H
+		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	#71H	;	F = 0111 0001b = 71H
+		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	#71H	;	F = 0111 0001b = 71H
 		RET
 	
 	DISPLAYAK_EGUNERATU_DENBORA:
-		CLR TICK_1min
+		CLR 	TICK_1min
 		MOV	A,	DENBORA
-		SUBB	A,	MINUTUAK
+		SUBB	A,	MINUTUAK		;	Geratzen den denbora kalkulatu
 		MOV	B,	#0AH
-		DIV	AB
+		DIV	AB				;	Geratzen den denbora /10 egin hamarrekoak eta unitateak banatzeko. Zatiketaren emaitza (hamarrekoak) akumuladorean gordeko da, eta hondarra (unitateak) B erregistroan
 		ACALL	DISPLAY_ZENBAKIA_ZEHAZTU
-		MOV	DH,	A
-		MOV	A,	B
+		ANL	DH,	#80H			;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	A			;	Ezkerreko displayan hamarrekoen zifra bistaratu
+		MOV	A,	B			;	Zatiketaren hondarra (unitateak) akumuladorean gorde
 		ACALL	DISPLAY_ZENBAKIA_ZEHAZTU
-		MOV	DU,	A
+		ANL	DU,	#80H			;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	A			;	Unitateen zifran eskumako displayan bistaratu
 		RET
 		
 	DISPLAY_ZENBAKIA_ZEHAZTU:
@@ -606,31 +625,31 @@ ORG 7BH
 		MOVC	A,	@ A+PC
 		RET
 		DB	03FH	;	0 = 0011 1111b
-		DB	06H		;	1 = 0000 0110b
+		DB	06H	;	1 = 0000 0110b
 		DB	05BH	;	2 = 0101 1011b
 		DB	09FH	;	3 = 0100 1111b
 		DB	066H	;	4 = 0110 0110b
 		DB	06DH	;	5 = 0110 1101b
 		DB	07DH	;	6 = 0111 1101b
-		DB	07H		;	7 = 0000 0111b
+		DB	07H	;	7 = 0000 0111b
 		DB	07FH	;	8 = 0111 1111b
 		DB	06FH	;	9 = 0110 1111b
 		
 
 ;*********************************************************************************************************************************
-;													ETENEN ERRUTINA LAGUNTZAILEAK
+;													TIMERREN ERRUTINA LAGUNTZAILEAK
 ;*********************************************************************************************************************************
 
 	UNITATE_BIHURKETA:
-		INC	KONT_1ms
-		MOV	A,	#0FAH
-		CJNE	A,	KONT_1ms,	UB_AMAIERA
-		INC	KONT_250ms
-		MOV	KONT_1ms,	#00H
-		MOV	A,	#04H
-		CJNE	A,	KONT_250ms,	UB_AMAIERA
-		INC	SEGUNDUAK
-		MOV	KONT_250ms,	#00H
+		INC	KONT_1ms				;	1ms kontatzen duen aldagaia inkrementatu
+		MOV	A,	#0FAH				;	250 akumuladorean gorde
+		CJNE	A,	KONT_1ms,	UB_AMAIERA	;	250 ms pasatu diren konprobatu (1ms*250)
+		INC	KONT_250ms				;	250ms kontatzen duen aldagaia inkrementatu
+		MOV	KONT_1ms,	#00H			;	1ms kontatzen duen aldagaia 0-ra jarri
+		MOV	A,	#04H				;	4 akumuladorean gorde
+		CJNE	A,	KONT_250ms,	UB_AMAIERA	;	1 s pasatu den konprobatu (250ms*4)
+		INC	SEGUNDUAK				;	Segunduak inkrementatu
+		MOV	KONT_250ms,	#00H			;	250ms kontatzen duen aldagaia 0-ra jarri
 		UB_AMAIERA:
 		RET
 
@@ -642,70 +661,33 @@ ORG 7BH
 		RET
 
 	KONPROBATU_15s:
-		MOV	A,	#0FH
-		CJNE	A,	SEGUNDUAK,	K15s_AMAIERA
-		SETB	TICK_15s
+		MOV	A,	#0FH				;	15 akumuladorean gorde
+		CJNE	A,	SEGUNDUAK,	K15s_AMAIERA	;	15 segundu pasatu diren konprobatu
+		SETB	TICK_15s				;	15 s igaro diren flag-a altxatu
 		K15s_AMAIERA:
 		RET
 
 	KONPROBATU_1min:
-		MOV	A,	#03CH
-		CJNE	A,	SEGUNDUAK,	K1min_AMAIERA
-		SETB	TICK_1min
-		INC	MINUTUAK
-		MOV	SEGUNDUAK,	#00H
+		MOV	A,	#03CH				;	60 akumuladorean gorde
+		CJNE	A,	SEGUNDUAK,	K1min_AMAIERA	;	1 min pasatu den konprobatu (1s*60)
+		SETB	TICK_1min				;	1 min igaron den falg-a altxatu
+		INC	MINUTUAK				;	Minutuak inkrementatu
+		MOV	SEGUNDUAK,	#00H			;	Segunduak 0-ra jarri
 		K1min_AMAIERA:
 		RET
 	
 	KONPROBATU_10min:
-		MOV	A,	#0AH
-		CJNE	A,	MINUTUAK,	K10min_AMAIERA
-		SETB	TICK_10min
+		MOV	A,	#0AH					;	10 akumuladorean gorde
+		CJNE	A,	MINUTUAK,	K10min_AMAIERA		;	10 min pasatu diren konprobatu
+		SETB	TICK_10min					;	10 min pasatu diren flag-a altxatu
 		K10min_AMAIERA:
 		RET
 			
 	KONPROBATU_50min:
-		MOV	A,	#032H
-		CJNE	A,	MINUTUAK,	K50min_AMAIERA
-		SETB	TICK_50min
+		MOV	A,	#032H					;	50 akumuladorean gorde
+		CJNE	A,	MINUTUAK,	K50min_AMAIERA		;	50 min pasatu diren konprobatu
+		SETB	TICK_50min					;	50 min pasatu diren flag-a altxatu
 		K50min_AMAIERA:
 		RET
-			
-			
-	PISUA_IRAKURRI:
-		MOV		A,	#0E6H
-		CLR		C
-		SUBB	A,	ADCH
-		JC		GAINKARGA_DAGO
-		CLR		TICK_GAINK
-		RET
-	
-	GAINKARGA_DAGO:
-		SETB	TICK_GAINK
-		RET
-		
-	
-	TENPERATURA_IRAKURRI:
-		ACALL	TENPERATURA_HAUTATU
-		SUBB	A,	ADCH
-		JC		TENPERATURA_EGOKIA
-		CLR		TICK_TENP_EGOKIA
-		RET
-		
-	TENPERATURA_EGOKIA:
-		SETB	TICK_TENP_EGOKIA
-		RET
-		
-	TENPERATURA_HAUTATU:
-		MOV		A,	#00H
-		MOV		A,	P3
-		ANL		A,	#03H
-		INC	A
-		MOVC	A,	@ A+PC
-		RET
-		DB	00H		;	Ur hotza
-		DB	066H	;	40ºC
-		DB	099H	;	60ºC
-		DB	0CDH	;	80ºC
 		
 END
