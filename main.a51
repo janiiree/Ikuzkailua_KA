@@ -78,7 +78,7 @@ ORG 0BH		;	TIMER0 etena, 1ms-rako konfiguratuta
 ORG 0x53	;	ADC0 etena ---> ADCI=1 denean
 
 	SETB	TICK_IRAKURRITA		;	ADC-ren balioa irakurri egin dela jakiteko
-	ANL	ADCON,	#0EFH		;	Irakurketa amaitzean ADCI flag-a (ADCON.4 bit-a) software bidez ezabatu behar da
+	ANL	ADCON,	#0xEF		;	Irakurketa amaitzean ADCI flag-a (ADCON.4 bit-a) software bidez ezabatu behar da
 	RETI
 
 ;*********************************************************************************************************************************
@@ -550,15 +550,15 @@ ORG 0x7B
 		
 	GERTAERA_SORGAILUA_8:
 		JB	ATE_SNTS,	GS8_ATE_IREKIA	;	Atea ireki den konprobatu
-		MOV	GERTAERA,	#01H		;	Oraindik ez da atea ireki
+		MOV	GERTAERA,	#0xx1		;	Oraindik ez da atea ireki
 		RET
 		
 	GS8_ATE_IREKIA:
-		MOV	GERTAERA,	#00H	;	Atea ireki da
+		MOV	GERTAERA,	#0x00	;	Atea ireki da
 		RET	
 
 	BUKATUTA:
-		MOV	EGOERA,		#00H	;	0. egoera jarri
+		MOV	EGOERA,		#0x00	;	0. egoera jarri
 		RET
 		
 ;*********************************************************************************************************************************
@@ -567,10 +567,10 @@ ORG 0x7B
 		
 	ADC_IRAKURKETA_HASI:
 		CLR 	TICK_IRAKURRITA		;	Irakurketa berria hasiko denez, flag-a jaitsi
-		ANL	ADCON,	#0DFH		;	ADEX 0-ra jarri software modua aukeratzeko (ADCON.5)
+		ANL	ADCON,	#0xDF		;	ADEX 0-ra jarri software modua aukeratzeko (ADCON.5)
 		SETB	EAD			;	ADCaren etenak gaitu
 		SETB	EA			;	Etenak gaitu
-		ORL	ADCON,	#08H		;	ADCS 1-era jarri (ADCON.3) irakurketa hasteko
+		ORL	ADCON,	#0x08		;	ADCS 1-era jarri (ADCON.3) irakurketa hasteko
 		RET
 			
 ;*********************************************************************************************************************************
@@ -578,14 +578,14 @@ ORG 0x7B
 ;*********************************************************************************************************************************
 
 	UNITATE_BIHURKETA:
-		MOV	A,	#0FAH				;	250 akumuladorean gorde
+		MOV	A,	#0xFA				;	250 akumuladorean gorde
 		CJNE	A,	KONT_1ms,	UB_AMAIERA	;	250 ms pasatu diren konprobatu (1ms*250)
 		INC	KONT_250ms				;	250ms kontatzen duen aldagaia inkrementatu
-		MOV	KONT_1ms,		#00H		;	1ms kontatzen duen aldagaia 0-ra jarri
-		MOV	A,	#04H				;	4 akumuladorean gorde
+		MOV	KONT_1ms,		#0x00		;	1ms kontatzen duen aldagaia 0-ra jarri
+		MOV	A,	#0x04				;	4 akumuladorean gorde
 		CJNE	A,	KONT_250ms,	UB_AMAIERA	;	1 s pasatu den konprobatu (250ms*4)
 		INC	SEGUNDUAK				;	Segunduak inkrementatu
-		MOV	KONT_250ms,		#00H		;	250ms kontatzen duen aldagaia 0-ra jarri
+		MOV	KONT_250ms,		#0x00		;	250ms kontatzen duen aldagaia 0-ra jarri
 		UB_AMAIERA:
 		RET
 
@@ -597,30 +597,30 @@ ORG 0x7B
 		RET
 
 	KONPROBATU_15s:
-		MOV	A,	#0FH				;	15 akumuladorean gorde
+		MOV	A,	#0x0F				;	15 akumuladorean gorde
 		CJNE	A,	SEGUNDUAK,	K15s_AMAIERA	;	15 segundu pasatu diren konprobatu
 		SETB	TICK_15s				;	15 s igaro diren flag-a altxatu
 		K15s_AMAIERA:
 		RET
 
 	KONPROBATU_1min:
-		MOV	A,	#03CH				;	60 akumuladorean gorde
+		MOV	A,	#0x3C				;	60 akumuladorean gorde
 		CJNE	A,	SEGUNDUAK,	K1min_AMAIERA	;	1 min pasatu den konprobatu (1s*60)
 		SETB	TICK_1min				;	1 min igaron den falg-a altxatu
 		INC	MINUTUAK				;	Minutuak inkrementatu
-		MOV	SEGUNDUAK,	#00H			;	Segunduak 0-ra jarri
+		MOV	SEGUNDUAK,	#0x00			;	Segunduak 0-ra jarri
 		K1min_AMAIERA:
 		RET
 			
 	KONPROBATU_50min:
-		MOV	A,	#032H				;	50 akumuladorean gorde
+		MOV	A,	#0x32				;	50 akumuladorean gorde
 		CJNE	A,	MINUTUAK,	K50min_AMAIERA	;	50 min pasatu diren konprobatu
 		SETB	TICK_50min				;	50 min pasatu diren flag-a altxatu
 		K50min_AMAIERA:
 		RET
 	
 	KONPROBATU_10min_ZENT:
-		MOV	A,	#3CH				;	10 akumuladorean gorde
+		MOV	A,	#0x3C				;	10 akumuladorean gorde
 		CJNE	A,	MINUTUAK,	K10min_AMAIERA	;	10 min pasatu diren konprobatu
 		SETB	TICK_10min				;	10 min pasatu diren flag-a altxatu
 		K10min_AMAIERA:
@@ -631,43 +631,43 @@ ORG 0x7B
 ;*********************************************************************************************************************************
 	
 	DISPLAYAK_AMATATU:
-		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ANL	DH,	#0x80	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ANL	DU,	#0x80	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
 		RET
 	
 	DISPLAYAK_EGUNERATU_PA:
-		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ORL	DH,	#73H	;	P = 0111 0011b = 73H
-		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ORL	DU,	#77H	;	A = 0111 0111b = 77H
+		ANL	DH,	#0x80	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	#0x73	;	P = 0111 0011b = 73H
+		ANL	DU,	#0x80	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	#0x77	;	A = 0111 0111b = 77H
 		RET
 	
 	DISPLAYAK_EGUNERATU_SP:
-		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ORL	DH,	#6DH	;	S = 0110 1101b = 6DH
-		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ORL	DU,	#73H	;	P = 0111 0011b = 73H
+		ANL	DH,	#0x80	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	#0x6D	;	S = 0110 1101b = 6DH
+		ANL	DU,	#0x80	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	#0x73	;	P = 0111 0011b = 73H
 		RET
 	
 	DISPLAYAK_EGUNERATU_FF:
-		ANL	DH,	#80H	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ORL	DH,	#71H	;	F = 0111 0001b = 71H
-		ANL	DU,	#80H	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
-		ORL	DU,	#71H	;	F = 0111 0001b = 71H
+		ANL	DH,	#0x80	;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DH,	#0x71	;	F = 0111 0001b = 71H
+		ANL	DU,	#0x80	;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ORL	DU,	#0x71	;	F = 0111 0001b = 71H
 		RET
 	
 	DISPLAYAK_EGUNERATU_DENBORA:
 		CLR 	TICK_1min
 		MOV	A,	DENBORA
 		SUBB	A,	MINUTUAK		;	Geratzen den denbora kalkulatu
-		MOV	B,	#0AH
+		MOV	B,	#0x0A
 		DIV	AB				;	Geratzen den denbora /10 egin hamarrekoak eta unitateak banatzeko. Zatiketaren emaitza (hamarrekoak) akumuladorean gordeko da, eta hondarra (unitateak) B erregistroan
 		ACALL	DISPLAY_ZENBAKIA_ZEHAZTU
-		ANL		DH,	#80H		;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ANL		DH,	#0x80		;	DH etiketak P0 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
 		ORL		DH,	A		;	Ezkerreko displayan hamarrekoen zifra bistaratu
 		MOV		A,	B		;	Zatiketaren hondarra (unitateak) akumuladorean gorde
 		ACALL	DISPLAY_ZENBAKIA_ZEHAZTU
-		ANL		DU,	#80H		;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
+		ANL		DU,	#0x80		;	DU etiketak P2 portua adierazten du, baina .7 bit-a ez denez displayetan erabiltzen, ez da bere balioa aldatu behar
 		ORL		DU,	A		;	Unitateen zifran eskumako displayan bistaratu
 		RET
 		
@@ -675,15 +675,15 @@ ORG 0x7B
 		INC	A
 		MOVC	A,	@ A+PC
 		RET
-		DB	03FH	;	0 = 0011 1111b
-		DB	06H		;	1 = 0000 0110b
-		DB	05BH	;	2 = 0101 1011b
-		DB	09FH	;	3 = 0100 1111b
-		DB	066H	;	4 = 0110 0110b
-		DB	06DH	;	5 = 0110 1101b
-		DB	07DH	;	6 = 0111 1101b
-		DB	07H		;	7 = 0000 0111b
-		DB	07FH	;	8 = 0111 1111b
-		DB	06FH	;	9 = 0110 1111b
+		DB	0x3F	;	0 = 0011 1111b
+		DB	0x06	;	1 = 0000 0110b
+		DB	0x5B	;	2 = 0101 1011b
+		DB	0x9F	;	3 = 0100 1111b
+		DB	0x66	;	4 = 0110 0110b
+		DB	0x6D	;	5 = 0110 1101b
+		DB	0x7D	;	6 = 0111 1101b
+		DB	0x07	;	7 = 0000 0111b
+		DB	0x7F	;	8 = 0111 1111b
+		DB	0x6F	;	9 = 0110 1111b
 		
 END
